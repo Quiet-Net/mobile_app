@@ -4,7 +4,7 @@ class AppTheme {
   static const primaryColor = Color(0xFF61DAFB);
   static const backgroundColor = Color(0xFF282C34);
   static const darkBackgroundColor = Color(0xFF1A1C20);
-  
+
   static ThemeData get theme => ThemeData(
     scaffoldBackgroundColor: backgroundColor,
     colorScheme: const ColorScheme.dark(
@@ -26,4 +26,4 @@ class AppTheme {
       ),
     ),
   );
-} 
+}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import '../components/noise_meter.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -8,7 +9,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   bool _isHovered = false;
   bool _isMenuOpen = false;
@@ -87,13 +89,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       onExit: (_) => setState(() => _isHovered = false),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 500),
-                        transform: Matrix4.identity()
-                          ..translate(0.0, _isHovered ? -5.0 : 0.0)
-                          ..scale(_isHovered ? 1.05 : 1.0),
+                        transform:
+                            Matrix4.identity()
+                              ..translate(0.0, _isHovered ? -5.0 : 0.0)
+                              ..scale(_isHovered ? 1.05 : 1.0),
                         child: ShaderMask(
-                          shaderCallback: (bounds) => const LinearGradient(
-                            colors: [Colors.white, Color(0xFF61DAFB), Colors.white],
-                          ).createShader(bounds),
+                          shaderCallback:
+                              (bounds) => const LinearGradient(
+                                colors: [
+                                  Colors.white,
+                                  Color(0xFF61DAFB),
+                                  Colors.white,
+                                ],
+                              ).createShader(bounds),
                           child: const Text(
                             'Welcome to QuietNet',
                             style: TextStyle(
@@ -122,6 +130,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                     ),
                     const SizedBox(height: 30),
+                    // Noise Meter
+                    const NoiseMeter(),
+                    const SizedBox(height: 30),
                     // Counter
                     Text(
                       '$_counter',
@@ -141,26 +152,30 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         onTap: _toggleCounter,
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 500),
-                          transform: Matrix4.identity()
-                            ..translate(0.0, _isButtonHovered ? -3.0 : 0.0),
+                          transform:
+                              Matrix4.identity()
+                                ..translate(0.0, _isButtonHovered ? -3.0 : 0.0),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(25),
                             border: Border.all(
                               color: const Color(0xFF61DAFB),
                               width: 1,
                             ),
-                            boxShadow: _isButtonHovered ? [
-                              const BoxShadow(
-                                color: Color(0x4861DAFB),
-                                blurRadius: 15,
-                                spreadRadius: 1,
-                              ),
-                              const BoxShadow(
-                                color: Color(0x2861DAFB),
-                                blurRadius: 20,
-                                spreadRadius: 1,
-                              ),
-                            ] : [],
+                            boxShadow:
+                                _isButtonHovered
+                                    ? [
+                                      const BoxShadow(
+                                        color: Color(0x4861DAFB),
+                                        blurRadius: 15,
+                                        spreadRadius: 1,
+                                      ),
+                                      const BoxShadow(
+                                        color: Color(0x2861DAFB),
+                                        blurRadius: 20,
+                                        spreadRadius: 1,
+                                      ),
+                                    ]
+                                    : [],
                           ),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -168,7 +183,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               vertical: 16,
                             ),
                             child: Text(
-                              _isRunning ? 'Stop' : (_isStopped ? 'Reset' : 'Start'),
+                              _isRunning
+                                  ? 'Stop'
+                                  : (_isStopped ? 'Reset' : 'Start'),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,
@@ -228,4 +245,4 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ),
     );
   }
-} 
+}
