@@ -22,12 +22,14 @@ class _NoiseMeterState extends State<NoiseMeter> {
   StreamSubscription? _micStreamSubscription;
   static const double _smoothingFactor = 0.3;
 
-  // Reference values for calibration
+  // Enhanced calibration values based on comparison with professional meter
   static const double _referenceDb = 94.0; // Standard calibration value
   static const double _referenceAmplitude =
       0.5; // Approximate RMS value for 94dB
   static const double _dbOffset =
-      20.0; // Compensates for microphone sensitivity differences
+      -5.0; // Negative offset to bring all values down
+  static const double _dbScalingFactor =
+      0.7; // Stronger scaling factor for better calibration
 
   @override
   void initState() {
@@ -180,20 +182,31 @@ class _NoiseMeterState extends State<NoiseMeter> {
     }
     double rms = sqrt(sumSquares / samples.length);
 
-    // Convert to decibels using proper calibration formula
+    // Convert to decibels using enhanced calibration formula
     double db = 0;
 
     if (rms > 0) {
       // Standard SPL calibration formula
       db = _referenceDb + 20 * log(rms / _referenceAmplitude) / ln10;
 
-      // Add offset to compensate for microphone sensitivity
-      db += _dbOffset;
+      // Apply stronger scaling and offset
+      db = _dbOffset + (db - _referenceDb) * _dbScalingFactor + _referenceDb;
+
+      // Apply a specific correction to match the professional meter
+      // 45dB in our app should read as 30dB (difference of 15dB)
+      double calibrationPoint = 45.0; // Our app's reading
+      double targetValue = 30.0; // Target reading (professional meter)
+      double correctionFactor =
+          (calibrationPoint - targetValue) / calibrationPoint;
+
+      // Apply nonlinear correction that affects lower ranges more strongly
+      // This creates a curve that applies stronger correction at lower levels
+      db = db - (db * correctionFactor * (1.0 - (db / 120.0)));
 
       // Limit the range of values to sensible ones
-      db = db.clamp(30.0, 120.0);
+      db = db.clamp(20.0, 120.0);
     } else {
-      db = 30.0; // Silence or very quiet sound
+      db = 20.0; // Silence or very quiet sound
     }
 
     // Debug prints
@@ -226,8 +239,8 @@ class _NoiseMeterState extends State<NoiseMeter> {
   }
 
   Color _getDecibelColor(double db) {
-    if (db < 60) return Colors.green;
-    if (db < 70) return Colors.yellow;
+    if (db < 50) return Colors.green;
+    if (db < 65) return Colors.yellow;
     if (db < 80) return Colors.orange;
     return Colors.red;
   }
@@ -235,7 +248,7 @@ class _NoiseMeterState extends State<NoiseMeter> {
   // Build a visual level indicator
   Widget _buildLevelIndicator() {
     // Create a visual indicator of sound level
-    final double levelPercentage = (_decibels - 30) / 90; // 30-120 dB range
+    final double levelPercentage = (_decibels - 20) / 100; // 20-120 dB range
     final double constrainedLevel = levelPercentage.clamp(0.0, 1.0);
 
     return Container(
@@ -361,9 +374,10 @@ class _NoiseMeterState extends State<NoiseMeter> {
   }
 
   String _getLevelDescription(double db) {
-    if (db < 50) return 'Quiet';
-    if (db < 60) return 'Moderate';
-    if (db < 70) return 'Loud';
+    if (db < 30) return 'Very Quiet';
+    if (db < 40) return 'Quiet';
+    if (db < 50) return 'Moderate';
+    if (db < 65) return 'Loud';
     if (db < 80) return 'Very Loud';
     if (db < 90) return 'Harmful';
     return 'Dangerous';
