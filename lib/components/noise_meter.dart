@@ -3,6 +3,7 @@ import 'package:mic_stream/mic_stream.dart';
 import 'dart:async';
 import '../utils/permission_manager.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'dart:math';
 
 class NoiseMeter extends StatefulWidget {
   const NoiseMeter({super.key});
@@ -14,8 +15,13 @@ class NoiseMeter extends StatefulWidget {
 class _NoiseMeterState extends State<NoiseMeter> {
   bool _isRecording = false;
   double _decibels = 0.0;
+  double _minDecibels = double.infinity;
+  double _maxDecibels = 0.0;
+  double _smoothedDecibels = 0.0;
   Timer? _timer;
   StreamSubscription? _micStreamSubscription;
+  static const double _smoothingFactor =
+      0.3; // Adjust this value to control smoothing (0.0 to 1.0)
 
   @override
   void initState() {
@@ -76,10 +82,17 @@ class _NoiseMeterState extends State<NoiseMeter> {
 
   Future<void> _startRecording() async {
     try {
+      setState(() {
+        _minDecibels = double.infinity;
+        _maxDecibels = 0.0;
+        _smoothedDecibels = 0.0;
+      });
+
       final stream = await MicStream.microphone(
         sampleRate: 44100,
         channelConfig: ChannelConfig.CHANNEL_IN_MONO,
         audioFormat: AudioFormat.ENCODING_PCM_16BIT,
+        audioSource: AudioSource.DEFAULT,
       );
 
       if (stream == null) {
@@ -98,7 +111,15 @@ class _NoiseMeterState extends State<NoiseMeter> {
       _micStreamSubscription = stream.listen(
         (data) {
           final amplitude = _calculateAmplitude(data);
-          setState(() => _decibels = amplitude);
+          setState(() {
+            _decibels = amplitude;
+            if (amplitude < _minDecibels) {
+              _minDecibels = amplitude;
+            }
+            if (amplitude > _maxDecibels) {
+              _maxDecibels = amplitude;
+            }
+          });
         },
         onError: (error) {
           debugPrint('Microphone stream error: $error');
@@ -114,7 +135,7 @@ class _NoiseMeterState extends State<NoiseMeter> {
   double _calculateAmplitude(List<int> data) {
     if (data.isEmpty) return 0;
 
-    // Konwertuj bajty na wartości 16-bitowe
+    // Convert bytes to 16-bit values
     final samples = <int>[];
     for (var i = 0; i < data.length; i += 2) {
       if (i + 1 < data.length) {
@@ -122,18 +143,38 @@ class _NoiseMeterState extends State<NoiseMeter> {
       }
     }
 
-    // Oblicz średnią amplitudę
-    final sum = samples.fold<int>(0, (sum, sample) => sum + sample.abs());
-    final average = sum / samples.length;
+    // Calculate RMS (Root Mean Square) instead of simple average
+    double sumSquares = 0;
+    for (var sample in samples) {
+      // Normalize to -1.0 to 1.0 range
+      double normalizedSample = sample / 32768.0;
+      sumSquares += normalizedSample * normalizedSample;
+    }
+    double rms = sqrt(sumSquares / samples.length);
 
-    // Konwertuj na dB (uproszczona wersja)
-    return 20 * (average / 32768).clamp(0.0, 1.0);
+    // Convert to decibels
+    // 20 * log10(rms) gives us the decibel value
+    // We add 100 to get a positive range (typical for noise meters)
+    double db = 20 * log(rms) / ln10 + 100;
+
+    // Debug prints
+    debugPrint('RMS: $rms');
+    debugPrint('Decibels: $db');
+    debugPrint('Max sample: ${samples.reduce((a, b) => a > b ? a : b)}');
+    debugPrint('Min sample: ${samples.reduce((a, b) => a < b ? a : b)}');
+
+    return db;
   }
 
   void _stopRecording() {
     _timer?.cancel();
     _micStreamSubscription?.cancel();
-    setState(() => _isRecording = false);
+    setState(() {
+      _isRecording = false;
+      _minDecibels = double.infinity;
+      _maxDecibels = 0.0;
+      _smoothedDecibels = 0.0;
+    });
   }
 
   @override
@@ -216,7 +257,7 @@ class _NoiseMeterState extends State<NoiseMeter> {
                       fontWeight: FontWeight.w300,
                     ),
                   ),
-                  if (_isRecording)
+                  if (_isRecording) ...[
                     Text(
                       _getLevelDescription(_decibels),
                       style: TextStyle(
@@ -225,6 +266,16 @@ class _NoiseMeterState extends State<NoiseMeter> {
                         fontWeight: FontWeight.w300,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Min: ${_minDecibels.toStringAsFixed(1)} | Max: ${_maxDecibels.toStringAsFixed(1)}',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
