@@ -21,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen>
   Timer? _timer;
   final GlobalKey<NoiseMeterState> _noiseMeterKey =
       GlobalKey<NoiseMeterState>();
+  DateTime? _startTime;
 
   @override
   void initState() {
@@ -38,6 +39,16 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+
+    String hours = twoDigits(duration.inHours);
+    String minutes = twoDigits(duration.inMinutes.remainder(60));
+    String seconds = twoDigits(duration.inSeconds.remainder(60));
+
+    return '$hours:$minutes:$seconds';
+  }
+
   void _toggleCounter() {
     setState(() {
       if (_isRunning) {
@@ -47,9 +58,11 @@ class _HomeScreenState extends State<HomeScreen>
       } else if (_isStopped) {
         _counter = 0;
         _isStopped = false;
+        _startTime = null;
         _noiseMeterKey.currentState?.resetStats();
       } else {
         _isRunning = true;
+        _startTime = DateTime.now();
         _startCounter();
       }
     });
@@ -58,7 +71,9 @@ class _HomeScreenState extends State<HomeScreen>
   void _startCounter() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
-        _counter++;
+        if (_startTime != null) {
+          _counter = DateTime.now().difference(_startTime!).inSeconds;
+        }
       });
     });
   }
@@ -142,12 +157,13 @@ class _HomeScreenState extends State<HomeScreen>
                     const SizedBox(height: 30),
                     // Counter
                     Text(
-                      '$_counter',
+                      _formatDuration(Duration(seconds: _counter)),
                       style: const TextStyle(
                         color: Color(0xFF61DAFB),
                         fontSize: 48,
                         fontWeight: FontWeight.w300,
                         letterSpacing: 2,
+                        fontFamily: 'monospace',
                       ),
                     ),
                     const SizedBox(height: 20),
