@@ -160,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen>
                       _formatDuration(Duration(seconds: _counter)),
                       style: const TextStyle(
                         color: Color(0xFF61DAFB),
-                        fontSize: 48,
+                        fontSize: 36,
                         fontWeight: FontWeight.w300,
                         letterSpacing: 2,
                         fontFamily: 'monospace',

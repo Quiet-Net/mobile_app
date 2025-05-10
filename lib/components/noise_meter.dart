@@ -332,7 +332,7 @@ class NoiseMeterState extends State<NoiseMeter> {
                 'Noise Level',
                 style: TextStyle(
                   color: Color(0xFF61DAFB),
-                  fontSize: 20,
+                  fontSize: 24,
                   fontWeight: FontWeight.w300,
                   letterSpacing: 1,
                 ),
@@ -341,53 +341,47 @@ class NoiseMeterState extends State<NoiseMeter> {
           ),
           const SizedBox(height: 15),
           Container(
-            width: 200,
-            height: 200,
+            width: 250,
+            height: 250,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color:
-                    _isRecording
-                        ? _getDecibelColor(_decibels)
-                        : const Color(0xFF61DAFB),
-                width: 2,
-              ),
+              border: Border.all(color: _getDecibelColor(_decibels), width: 2),
             ),
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    _decibels > 0
-                        ? '${_decibels.toStringAsFixed(1)} dB'
-                        : 'OFF',
-                    style: TextStyle(
-                      color:
-                          _isRecording
-                              ? _getDecibelColor(_decibels)
-                              : const Color(0xFF61DAFB),
-                      fontSize: 24,
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
                   if (_decibels > 0) ...[
                     Text(
-                      _getLevelDescription(_decibels),
+                      '${_decibels.toStringAsFixed(1)} dB',
                       style: TextStyle(
-                        color:
-                            _isRecording
-                                ? _getDecibelColor(_decibels)
-                                : const Color(0xFF61DAFB),
-                        fontSize: 14,
+                        color: _getDecibelColor(_decibels),
+                        fontSize: 32,
                         fontWeight: FontWeight.w300,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    Text(
+                      _getLevelDescription(_decibels),
+                      style: TextStyle(
+                        color: _getDecibelColor(_decibels),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                  ] else ...[
+                    const Icon(
+                      Icons.mic_off_rounded,
+                      size: 72,
+                      color: Color(0xFF61DAFB),
+                    ),
+                  ],
+                  if (_decibels > 0) ...[
+                    const SizedBox(height: 12),
                     Text(
                       'Min: ${_minDecibels.toStringAsFixed(1)} | Avg: ${_averageDecibels.toStringAsFixed(1)} | Max: ${_maxDecibels.toStringAsFixed(1)}',
                       style: const TextStyle(
                         color: Colors.white70,
-                        fontSize: 12,
+                        fontSize: 16,
                         fontWeight: FontWeight.w300,
                       ),
                     ),
@@ -397,7 +391,7 @@ class NoiseMeterState extends State<NoiseMeter> {
             ),
           ),
           if (_decibels > 0) ...[
-            const SizedBox(height: 15),
+            const SizedBox(height: 20),
             _buildLevelIndicator(),
           ],
         ],
