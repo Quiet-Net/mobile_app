@@ -22,14 +22,10 @@ class _NoiseMeterState extends State<NoiseMeter> {
   StreamSubscription? _micStreamSubscription;
   static const double _smoothingFactor = 0.3;
 
-  // Enhanced calibration values based on comparison with professional meter
+  // Basic calibration values
   static const double _referenceDb = 94.0; // Standard calibration value
   static const double _referenceAmplitude =
       0.5; // Approximate RMS value for 94dB
-  static const double _dbOffset =
-      -5.0; // Negative offset to bring all values down
-  static const double _dbScalingFactor =
-      0.7; // Stronger scaling factor for better calibration
 
   @override
   void initState() {
@@ -182,26 +178,19 @@ class _NoiseMeterState extends State<NoiseMeter> {
     }
     double rms = sqrt(sumSquares / samples.length);
 
-    // Convert to decibels using enhanced calibration formula
+    // Convert to decibels using standard calibration formula
     double db = 0;
 
     if (rms > 0) {
-      // Standard SPL calibration formula
+      // First, calculate standard SPL
       db = _referenceDb + 20 * log(rms / _referenceAmplitude) / ln10;
 
-      // Apply stronger scaling and offset
-      db = _dbOffset + (db - _referenceDb) * _dbScalingFactor + _referenceDb;
-
-      // Apply a specific correction to match the professional meter
-      // 45dB in our app should read as 30dB (difference of 15dB)
-      double calibrationPoint = 45.0; // Our app's reading
-      double targetValue = 30.0; // Target reading (professional meter)
-      double correctionFactor =
-          (calibrationPoint - targetValue) / calibrationPoint;
-
-      // Apply nonlinear correction that affects lower ranges more strongly
-      // This creates a curve that applies stronger correction at lower levels
-      db = db - (db * correctionFactor * (1.0 - (db / 120.0)));
+      // Apply direct linear calibration based on empirical data
+      // We're using a simple but effective approach:
+      // - Observed: when app shows 39 dB, professional meter shows 31 dB
+      // - The ratio is approximately 1.26 (39/31)
+      // - Therefore we'll use a linear transform: actual_db = app_db / 1.26
+      db = db / 1.26;
 
       // Limit the range of values to sensible ones
       db = db.clamp(20.0, 120.0);
@@ -210,11 +199,11 @@ class _NoiseMeterState extends State<NoiseMeter> {
     }
 
     // Debug prints
-    debugPrint('RMS: $rms');
-    debugPrint('Calculated dB: $db');
+    //debugPrint('RMS: $rms');
+    //debugPrint('Calculated dB: $db');
     if (samples.isNotEmpty) {
-      debugPrint('Max sample: ${samples.reduce((a, b) => a > b ? a : b)}');
-      debugPrint('Min sample: ${samples.reduce((a, b) => a < b ? a : b)}');
+      //debugPrint('Max sample: ${samples.reduce((a, b) => a > b ? a : b)}');
+      //debugPrint('Min sample: ${samples.reduce((a, b) => a < b ? a : b)}');
     }
 
     return db;
