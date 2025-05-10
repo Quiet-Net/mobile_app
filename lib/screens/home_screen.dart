@@ -19,6 +19,8 @@ class _HomeScreenState extends State<HomeScreen>
   bool _isStopped = false;
   int _counter = 0;
   Timer? _timer;
+  final GlobalKey<NoiseMeterState> _noiseMeterKey =
+      GlobalKey<NoiseMeterState>();
 
   @override
   void initState() {
@@ -45,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen>
       } else if (_isStopped) {
         _counter = 0;
         _isStopped = false;
+        _noiseMeterKey.currentState?.resetStats();
       } else {
         _isRunning = true;
         _startCounter();
@@ -131,7 +134,11 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     const SizedBox(height: 30),
                     // Noise Meter
-                    const NoiseMeter(),
+                    NoiseMeter(
+                      key: _noiseMeterKey,
+                      isRunning: _isRunning,
+                      onToggle: _toggleCounter,
+                    ),
                     const SizedBox(height: 30),
                     // Counter
                     Text(

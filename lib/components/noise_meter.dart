@@ -6,18 +6,27 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:math';
 
 class NoiseMeter extends StatefulWidget {
-  const NoiseMeter({super.key});
+  final bool isRunning;
+  final VoidCallback onToggle;
+
+  const NoiseMeter({
+    super.key,
+    required this.isRunning,
+    required this.onToggle,
+  });
 
   @override
-  State<NoiseMeter> createState() => _NoiseMeterState();
+  NoiseMeterState createState() => NoiseMeterState();
 }
 
-class _NoiseMeterState extends State<NoiseMeter> {
+class NoiseMeterState extends State<NoiseMeter> {
   bool _isRecording = false;
   double _decibels = 0.0;
   double _minDecibels = double.infinity;
   double _maxDecibels = 0.0;
   double _smoothedDecibels = 0.0;
+  double _averageDecibels = 0.0;
+  int _measurementCount = 0;
   Timer? _timer;
   StreamSubscription? _micStreamSubscription;
   static const double _smoothingFactor = 0.3;
@@ -30,9 +39,22 @@ class _NoiseMeterState extends State<NoiseMeter> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _requestMicrophonePermission();
-    });
+    // Remove automatic permission request and recording start
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _requestMicrophonePermission();
+    // });
+  }
+
+  @override
+  void didUpdateWidget(NoiseMeter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isRunning != oldWidget.isRunning) {
+      if (widget.isRunning) {
+        _requestMicrophonePermission();
+      } else {
+        _stopRecording();
+      }
+    }
   }
 
   Future<void> _requestMicrophonePermission() async {
@@ -46,6 +68,8 @@ class _NoiseMeterState extends State<NoiseMeter> {
                 duration: Duration(seconds: 3),
               ),
             );
+            // Notify parent to stop running state if permission denied
+            widget.onToggle();
           }
         })
         .onPermissionGranted(() {
@@ -66,13 +90,19 @@ class _NoiseMeterState extends State<NoiseMeter> {
                     ),
                     actions: [
                       TextButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          // Notify parent to stop running state if permission denied
+                          widget.onToggle();
+                        },
                         child: const Text('Cancel'),
                       ),
                       TextButton(
                         onPressed: () {
                           Navigator.pop(context);
                           openAppSettings();
+                          // Notify parent to stop running state if permission denied
+                          widget.onToggle();
                         },
                         child: const Text('Open settings'),
                       ),
@@ -90,6 +120,8 @@ class _NoiseMeterState extends State<NoiseMeter> {
         _minDecibels = double.infinity;
         _maxDecibels = 0.0;
         _smoothedDecibels = 0.0;
+        _averageDecibels = 0.0;
+        _measurementCount = 0;
       });
 
       final stream = await MicStream.microphone(
@@ -115,9 +147,13 @@ class _NoiseMeterState extends State<NoiseMeter> {
       _micStreamSubscription = stream.listen(
         (data) {
           final rawDb = _calculateAmplitude(data);
-
-          // Apply smoothing to the decibel value
           final smoothedDb = _smoothDecibels(rawDb);
+
+          // Update average
+          _measurementCount++;
+          _averageDecibels =
+              ((_averageDecibels * (_measurementCount - 1)) + smoothedDb) /
+              _measurementCount;
 
           setState(() {
             _decibels = smoothedDb;
@@ -214,9 +250,23 @@ class _NoiseMeterState extends State<NoiseMeter> {
     _micStreamSubscription?.cancel();
     setState(() {
       _isRecording = false;
+      // Don't reset the values when stopping
+      // _minDecibels = double.infinity;
+      // _maxDecibels = 0.0;
+      // _smoothedDecibels = 0.0;
+      // _averageDecibels = 0.0;
+      // _measurementCount = 0;
+    });
+  }
+
+  void resetStats() {
+    setState(() {
+      _decibels = 0.0;
       _minDecibels = double.infinity;
       _maxDecibels = 0.0;
       _smoothedDecibels = 0.0;
+      _averageDecibels = 0.0;
+      _measurementCount = 0;
     });
   }
 
@@ -287,17 +337,6 @@ class _NoiseMeterState extends State<NoiseMeter> {
                   letterSpacing: 1,
                 ),
               ),
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap:
-                    _isRecording
-                        ? _stopRecording
-                        : _requestMicrophonePermission,
-                child: Icon(
-                  _isRecording ? Icons.mic : Icons.mic_off,
-                  color: _isRecording ? const Color(0xFF61DAFB) : Colors.grey,
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 15),
@@ -319,28 +358,33 @@ class _NoiseMeterState extends State<NoiseMeter> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    _isRecording ? '${_decibels.toStringAsFixed(1)} dB' : 'OFF',
+                    _decibels > 0
+                        ? '${_decibels.toStringAsFixed(1)} dB'
+                        : 'OFF',
                     style: TextStyle(
                       color:
                           _isRecording
                               ? _getDecibelColor(_decibels)
-                              : Colors.white,
+                              : const Color(0xFF61DAFB),
                       fontSize: 24,
                       fontWeight: FontWeight.w300,
                     ),
                   ),
-                  if (_isRecording) ...[
+                  if (_decibels > 0) ...[
                     Text(
                       _getLevelDescription(_decibels),
                       style: TextStyle(
-                        color: _getDecibelColor(_decibels),
+                        color:
+                            _isRecording
+                                ? _getDecibelColor(_decibels)
+                                : const Color(0xFF61DAFB),
                         fontSize: 14,
                         fontWeight: FontWeight.w300,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Min: ${_minDecibels.toStringAsFixed(1)} | Max: ${_maxDecibels.toStringAsFixed(1)}',
+                      'Min: ${_minDecibels.toStringAsFixed(1)} | Avg: ${_averageDecibels.toStringAsFixed(1)} | Max: ${_maxDecibels.toStringAsFixed(1)}',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
@@ -352,8 +396,7 @@ class _NoiseMeterState extends State<NoiseMeter> {
               ),
             ),
           ),
-          // Add level visualization
-          if (_isRecording) ...[
+          if (_decibels > 0) ...[
             const SizedBox(height: 15),
             _buildLevelIndicator(),
           ],
