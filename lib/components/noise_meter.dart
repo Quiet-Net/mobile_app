@@ -377,13 +377,15 @@ class NoiseMeterState extends State<NoiseMeter> {
                   ],
                   if (_decibels > 0) ...[
                     const SizedBox(height: 12),
-                    Text(
-                      'Min: ${_minDecibels.toStringAsFixed(1)} | Avg: ${_averageDecibels.toStringAsFixed(1)} | Max: ${_maxDecibels.toStringAsFixed(1)}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w300,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildStatItem('Min', _minDecibels),
+                        const SizedBox(width: 16),
+                        _buildStatItem('Avg', _averageDecibels),
+                        const SizedBox(width: 16),
+                        _buildStatItem('Max', _maxDecibels),
+                      ],
                     ),
                   ],
                 ],
@@ -396,6 +398,30 @@ class NoiseMeterState extends State<NoiseMeter> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildStatItem(String label, double value) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 14,
+            fontWeight: FontWeight.w300,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value.toStringAsFixed(1),
+          style: TextStyle(
+            color: _getDecibelColor(value),
+            fontSize: 20,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
