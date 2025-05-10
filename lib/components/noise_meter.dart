@@ -20,8 +20,14 @@ class _NoiseMeterState extends State<NoiseMeter> {
   double _smoothedDecibels = 0.0;
   Timer? _timer;
   StreamSubscription? _micStreamSubscription;
-  static const double _smoothingFactor =
-      0.3; // Adjust this value to control smoothing (0.0 to 1.0)
+  static const double _smoothingFactor = 0.3;
+
+  // Reference values for calibration
+  static const double _referenceDb = 94.0; // Standard calibration value
+  static const double _referenceAmplitude =
+      0.5; // Approximate RMS value for 94dB
+  static const double _dbOffset =
+      20.0; // Compensates for microphone sensitivity differences
 
   @override
   void initState() {
@@ -38,7 +44,7 @@ class _NoiseMeterState extends State<NoiseMeter> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Aplikacja wymaga dostępu do mikrofonu'),
+                content: Text('App requires microphone access'),
                 duration: Duration(seconds: 3),
               ),
             );
@@ -55,22 +61,22 @@ class _NoiseMeterState extends State<NoiseMeter> {
               context: context,
               builder:
                   (BuildContext context) => AlertDialog(
-                    title: const Text('Wymagany dostęp do mikrofonu'),
+                    title: const Text('Microphone access required'),
                     content: const Text(
-                      'Aby mierzyć poziom hałasu, aplikacja potrzebuje dostępu do mikrofonu. '
-                      'Proszę włączyć dostęp w ustawieniach.',
+                      'To measure noise levels, the app needs microphone access. '
+                      'Please enable access in settings.',
                     ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Anuluj'),
+                        child: const Text('Cancel'),
                       ),
                       TextButton(
                         onPressed: () {
                           Navigator.pop(context);
                           openAppSettings();
                         },
-                        child: const Text('Otwórz ustawienia'),
+                        child: const Text('Open settings'),
                       ),
                     ],
                   ),
@@ -100,7 +106,7 @@ class _NoiseMeterState extends State<NoiseMeter> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Nie można uzyskać dostępu do mikrofonu'),
+              content: Text('Cannot access microphone'),
               duration: Duration(seconds: 3),
             ),
           );
@@ -110,14 +116,18 @@ class _NoiseMeterState extends State<NoiseMeter> {
 
       _micStreamSubscription = stream.listen(
         (data) {
-          final amplitude = _calculateAmplitude(data);
+          final rawDb = _calculateAmplitude(data);
+
+          // Apply smoothing to the decibel value
+          final smoothedDb = _smoothDecibels(rawDb);
+
           setState(() {
-            _decibels = amplitude;
-            if (amplitude < _minDecibels) {
-              _minDecibels = amplitude;
+            _decibels = smoothedDb;
+            if (smoothedDb < _minDecibels) {
+              _minDecibels = smoothedDb;
             }
-            if (amplitude > _maxDecibels) {
-              _maxDecibels = amplitude;
+            if (smoothedDb > _maxDecibels) {
+              _maxDecibels = smoothedDb;
             }
           });
         },
@@ -132,18 +142,36 @@ class _NoiseMeterState extends State<NoiseMeter> {
     }
   }
 
+  // Function to smooth decibel values
+  double _smoothDecibels(double newValue) {
+    _smoothedDecibels =
+        _smoothedDecibels == 0.0
+            ? newValue
+            : _smoothedDecibels * (1 - _smoothingFactor) +
+                newValue * _smoothingFactor;
+    return _smoothedDecibels;
+  }
+
   double _calculateAmplitude(List<int> data) {
     if (data.isEmpty) return 0;
 
-    // Convert bytes to 16-bit values
+    // Convert bytes to 16-bit values (fixed for little-endian)
     final samples = <int>[];
     for (var i = 0; i < data.length; i += 2) {
       if (i + 1 < data.length) {
-        samples.add(data[i] | (data[i + 1] << 8));
+        // Little-endian: LSB first, then MSB
+        int sample = data[i] | (data[i + 1] << 8);
+
+        // Convert to signed value
+        if (sample > 32767) {
+          sample -= 65536;
+        }
+
+        samples.add(sample);
       }
     }
 
-    // Calculate RMS (Root Mean Square) instead of simple average
+    // Calculate RMS (Root Mean Square)
     double sumSquares = 0;
     for (var sample in samples) {
       // Normalize to -1.0 to 1.0 range
@@ -152,16 +180,29 @@ class _NoiseMeterState extends State<NoiseMeter> {
     }
     double rms = sqrt(sumSquares / samples.length);
 
-    // Convert to decibels
-    // 20 * log10(rms) gives us the decibel value
-    // We add 100 to get a positive range (typical for noise meters)
-    double db = 20 * log(rms) / ln10 + 100;
+    // Convert to decibels using proper calibration formula
+    double db = 0;
+
+    if (rms > 0) {
+      // Standard SPL calibration formula
+      db = _referenceDb + 20 * log(rms / _referenceAmplitude) / ln10;
+
+      // Add offset to compensate for microphone sensitivity
+      db += _dbOffset;
+
+      // Limit the range of values to sensible ones
+      db = db.clamp(30.0, 120.0);
+    } else {
+      db = 30.0; // Silence or very quiet sound
+    }
 
     // Debug prints
     debugPrint('RMS: $rms');
-    debugPrint('Decibels: $db');
-    debugPrint('Max sample: ${samples.reduce((a, b) => a > b ? a : b)}');
-    debugPrint('Min sample: ${samples.reduce((a, b) => a < b ? a : b)}');
+    debugPrint('Calculated dB: $db');
+    if (samples.isNotEmpty) {
+      debugPrint('Max sample: ${samples.reduce((a, b) => a > b ? a : b)}');
+      debugPrint('Min sample: ${samples.reduce((a, b) => a < b ? a : b)}');
+    }
 
     return db;
   }
@@ -189,6 +230,35 @@ class _NoiseMeterState extends State<NoiseMeter> {
     if (db < 70) return Colors.yellow;
     if (db < 80) return Colors.orange;
     return Colors.red;
+  }
+
+  // Build a visual level indicator
+  Widget _buildLevelIndicator() {
+    // Create a visual indicator of sound level
+    final double levelPercentage = (_decibels - 30) / 90; // 30-120 dB range
+    final double constrainedLevel = levelPercentage.clamp(0.0, 1.0);
+
+    return Container(
+      width: double.infinity,
+      height: 10,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(5),
+        color: Colors.grey[800],
+      ),
+      child: FractionallySizedBox(
+        alignment: Alignment.centerLeft,
+        widthFactor: constrainedLevel,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(5),
+            gradient: LinearGradient(
+              colors: [Colors.green, Colors.yellow, Colors.orange, Colors.red],
+              stops: const [0.3, 0.5, 0.7, 0.9],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -280,6 +350,11 @@ class _NoiseMeterState extends State<NoiseMeter> {
               ),
             ),
           ),
+          // Add level visualization
+          if (_isRecording) ...[
+            const SizedBox(height: 15),
+            _buildLevelIndicator(),
+          ],
         ],
       ),
     );
@@ -290,6 +365,7 @@ class _NoiseMeterState extends State<NoiseMeter> {
     if (db < 60) return 'Moderate';
     if (db < 70) return 'Loud';
     if (db < 80) return 'Very Loud';
+    if (db < 90) return 'Harmful';
     return 'Dangerous';
   }
 }
