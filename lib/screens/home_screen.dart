@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../components/noise_meter.dart';
+import 'info_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen>
   final GlobalKey<NoiseMeterState> _noiseMeterKey =
       GlobalKey<NoiseMeterState>();
   DateTime? _startTime;
+  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -82,6 +84,132 @@ class _HomeScreenState extends State<HomeScreen>
     _timer?.cancel();
   }
 
+  Widget _buildHomeContent() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Welcome Text with animation
+            MouseRegion(
+              onEnter: (_) => setState(() => _isHovered = true),
+              onExit: (_) => setState(() => _isHovered = false),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 500),
+                transform:
+                    Matrix4.identity()
+                      ..translate(0.0, _isHovered ? -5.0 : 0.0)
+                      ..scale(_isHovered ? 1.05 : 1.0),
+                child: ShaderMask(
+                  shaderCallback:
+                      (bounds) => const LinearGradient(
+                        colors: [Colors.white, Color(0xFF61DAFB), Colors.white],
+                      ).createShader(bounds),
+                  child: const Text(
+                    'QuietNet',
+                    style: TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.w300,
+                      letterSpacing: 2,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Decorative Line
+            Container(
+              height: 2,
+              width: 100,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    Color(0xFF61DAFB),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
+            // Noise Meter
+            NoiseMeter(
+              key: _noiseMeterKey,
+              isRunning: _isRunning,
+              onToggle: _toggleCounter,
+            ),
+            const SizedBox(height: 30),
+            // Counter
+            Text(
+              _formatDuration(Duration(seconds: _counter)),
+              style: const TextStyle(
+                color: Color(0xFF61DAFB),
+                fontSize: 36,
+                fontWeight: FontWeight.w300,
+                letterSpacing: 2,
+                fontFamily: 'monospace',
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Start/Stop Button
+            MouseRegion(
+              onEnter: (_) => setState(() => _isButtonHovered = true),
+              onExit: (_) => setState(() => _isButtonHovered = false),
+              child: GestureDetector(
+                onTap: _toggleCounter,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  transform:
+                      Matrix4.identity()
+                        ..translate(0.0, _isButtonHovered ? -3.0 : 0.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(
+                      color: const Color(0xFF61DAFB),
+                      width: 1,
+                    ),
+                    boxShadow:
+                        _isButtonHovered
+                            ? [
+                              const BoxShadow(
+                                color: Color(0x4861DAFB),
+                                blurRadius: 15,
+                                spreadRadius: 1,
+                              ),
+                              const BoxShadow(
+                                color: Color(0x2861DAFB),
+                                blurRadius: 20,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                            : [],
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
+                    child: Text(
+                      _isRunning ? 'Stop' : (_isStopped ? 'Reset' : 'Start'),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,178 +221,38 @@ class _HomeScreenState extends State<HomeScreen>
             colors: [Color(0xFF1A1C20), Color(0xFF282C34)],
           ),
         ),
-        child: Stack(
-          children: [
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Welcome Text with animation
-                    MouseRegion(
-                      onEnter: (_) => setState(() => _isHovered = true),
-                      onExit: (_) => setState(() => _isHovered = false),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 500),
-                        transform:
-                            Matrix4.identity()
-                              ..translate(0.0, _isHovered ? -5.0 : 0.0)
-                              ..scale(_isHovered ? 1.05 : 1.0),
-                        child: ShaderMask(
-                          shaderCallback:
-                              (bounds) => const LinearGradient(
-                                colors: [
-                                  Colors.white,
-                                  Color(0xFF61DAFB),
-                                  Colors.white,
-                                ],
-                              ).createShader(bounds),
-                          child: const Text(
-                            'Welcome to QuietNet',
-                            style: TextStyle(
-                              fontSize: 35,
-                              fontWeight: FontWeight.w300,
-                              letterSpacing: 2,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Decorative Line
-                    Container(
-                      height: 2,
-                      width: 100,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.transparent,
-                            Color(0xFF61DAFB),
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    // Noise Meter
-                    NoiseMeter(
-                      key: _noiseMeterKey,
-                      isRunning: _isRunning,
-                      onToggle: _toggleCounter,
-                    ),
-                    const SizedBox(height: 30),
-                    // Counter
-                    Text(
-                      _formatDuration(Duration(seconds: _counter)),
-                      style: const TextStyle(
-                        color: Color(0xFF61DAFB),
-                        fontSize: 36,
-                        fontWeight: FontWeight.w300,
-                        letterSpacing: 2,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Start/Stop Button
-                    MouseRegion(
-                      onEnter: (_) => setState(() => _isButtonHovered = true),
-                      onExit: (_) => setState(() => _isButtonHovered = false),
-                      child: GestureDetector(
-                        onTap: _toggleCounter,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 500),
-                          transform:
-                              Matrix4.identity()
-                                ..translate(0.0, _isButtonHovered ? -3.0 : 0.0),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(25),
-                            border: Border.all(
-                              color: const Color(0xFF61DAFB),
-                              width: 1,
-                            ),
-                            boxShadow:
-                                _isButtonHovered
-                                    ? [
-                                      const BoxShadow(
-                                        color: Color(0x4861DAFB),
-                                        blurRadius: 15,
-                                        spreadRadius: 1,
-                                      ),
-                                      const BoxShadow(
-                                        color: Color(0x2861DAFB),
-                                        blurRadius: 20,
-                                        spreadRadius: 1,
-                                      ),
-                                    ]
-                                    : [],
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 16,
-                            ),
-                            child: Text(
-                              _isRunning
-                                  ? 'Stop'
-                                  : (_isStopped ? 'Reset' : 'Start'),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w300,
-                                letterSpacing: 1,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            // Side Menu
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 500),
-              right: _isMenuOpen ? 0 : -300,
-              top: 0,
-              bottom: 0,
-              width: 300,
-              child: _buildSideMenu(),
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: [_buildHomeContent(), const InfoScreen()],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1C20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSideMenu() {
-    return Container(
-      color: const Color(0xFF1A1C20).withOpacity(0.95),
-      child: Stack(
-        children: [
-          Positioned(
-            left: -50,
-            top: MediaQuery.of(context).size.height / 2 - 20,
-            child: IconButton(
-              icon: Icon(
-                _isMenuOpen ? Icons.close : Icons.menu,
-                color: const Color(0xFF61DAFB),
-              ),
-              onPressed: () => setState(() => _isMenuOpen = !_isMenuOpen),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Add menu items here
-              ],
-            ),
-          ),
-        ],
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          },
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedItemColor: const Color(0xFF61DAFB),
+          unselectedItemColor: Colors.white70,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(icon: Icon(Icons.info), label: 'Info'),
+          ],
+        ),
       ),
     );
   }
