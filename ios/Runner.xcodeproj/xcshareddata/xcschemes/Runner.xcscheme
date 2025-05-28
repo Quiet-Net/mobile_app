@@ -94,6 +94,7 @@
    </AnalyzeAction>
    <ArchiveAction
       buildConfiguration = "Release"
+      customArchiveName = "QuietNet"
       revealArchiveInOrganizer = "YES">
    </ArchiveAction>
 </Scheme>

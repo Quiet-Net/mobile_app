@@ -1,0 +1,13 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGradient" cx="50%" cy="50%" r="80%" fx="50%" fy="50%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="70%" stop-color="#B3ECFF"/>
+      <stop offset="100%" stop-color="#61DAFB"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bgGradient)"/>
+  <!-- Placeholder for logo -->
+  <circle cx="960" cy="400" r="120" fill="#1A1C20" fill-opacity="0.15"/>
+  <text x="960" y="410" text-anchor="middle" font-size="48" fill="#1A1C20" fill-opacity="0.3" font-family="Arial, sans-serif">LOGO</text>
+</svg> 
